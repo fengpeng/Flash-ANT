@@ -101,5 +101,6 @@
 		<xmltask source="svninfo.xml">
 			<copy path="/info/entry/@revision" property="svn.revision" />
 		</xmltask>
+        <delete file="svninfo.xml" />
 	</target>
 </project>	
