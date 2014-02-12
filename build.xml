@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="Archer" default="svn">
+	<property file="build.properties" />
+	<property name="SVN" value="true" />
+	<!-- typedef -->
+	<taskdef name="xmltask" classname="com.oopsconsultancy.xmltask.ant.XmlTask" />
+	<taskdef resource="net/sf/antcontrib/antcontrib.properties"/>
+	<!-- task -->
+	<!--
+		flow description
+		1. get svn information
+		2. copy source to temp folder
+		3. modify version information
+		4. compile and output file
+		5. delete temp folder
+	-->
+	<target name="release" depends="copySourceToDeploy,modifyInformation,make,clearDeploy"></target>
+	<!-- NO.5 clear temp folder -->
+	<target name="clearDeploy">
+		<delete verbose="false" includeemptydirs="true">
+			<fileset dir="${DEPLOY_DIR_PATH}">
+				<include name="**/*" />
+			</fileset>
+		</delete>
+	</target>
+	<!-- NO.4 compile and output file -->
+	<target name="make" depends="compile,packFile"></target>
+	<target name="compile">
+		<exec executable="${MXMLC_PATH}" spawn="false" failonerror="true">
+			<arg line="-library-path='${EXTERNAL_LIB_DIR_PATH}'"/>
+			<arg line="-library-path='${API_SWC_PATH}'"/>
+			<arg line="-library-path='${FLEX_HOME}/frameworks/libs'" />
+			<arg line="-optimize=true" />
+			<arg line="-source-path='${DEPLOY_DIR_PATH}'" />
+			<arg line="-static-link-runtime-shared-libraries=true"/>
+			<arg line="'${APP_CLASS}'"/>
+			<arg line="-output '${OUT_PUT_SWF_PATH}'"/>
+			<arg line="-default-size ${DEFAULT_WIDTH} ${DEFAULT_HEIGHT}"/>
+			<arg line="-show-actionscript-warnings=false" />
+		</exec>
+	</target>
+	<target name="packFile">
+		<available file="${OUT_PUT_DIR_PATH}/${build.time1}" type="dir" property="timestamp.exist" />
+		<if>
+			<equals arg1="${timestamp.exist}" arg2="true" />
+			<then>
+				<delete dir="${OUT_PUT_DIR_PATH}/${build.time1}" />
+			</then>
+			<else>
+				<mkdir dir="${OUT_PUT_DIR_PATH}/${build.time1}" />
+			</else>
+		</if>
+		<available file="player.swf" property="playerSWF.exist" filepath="${OUT_PUT_DIR_PATH}"/>
+		<if>
+			<equals arg1="${playerSWF.exist}" arg2="true" />
+			<then>
+				<copy todir="${OUT_PUT_DIR_PATH}/${build.time1}" preservelastmodified="true">
+					<fileset dir="${OUT_PUT_DIR_PATH}">
+						<include name="player.swf"/>
+					</fileset>
+				</copy>
+			</then>
+		</if>
+	</target>
+	<!-- NO.3 modify version information -->
+	<target name="modifyInformation" depends="modifySVNRevision,modifyTimestamp"></target>
+	<target name="modifySVNRevision" depends="svn">
+		<if>
+			<equals arg1="${SVN}" arg2="true" />
+			<then>
+				<replaceregexp file="${APP_VERSION_CLASS}" 
+								match="REVERSION(.*)String = (.*)" 
+								replace="REVERSION:String = '${svn.revision}';" 
+								byline="true" 
+								encoding="utf-8" />
+			</then>
+		</if>
+	</target>
+	<target name="modifyTimestamp">
+		<tstamp>
+			<format property="build.time" pattern="yyyy-MM-dd.HH.mm.ss"/>
+			<format property="build.time1" pattern="yyyyMMddHHmmss" />
+		</tstamp>
+		<replaceregexp file="${APP_VERSION_CLASS}"
+								match="TIME_STAMP(.*)String = (.*)" 
+								replace="TIME_STAMP:String = '${build.time}';" 
+								byline="true" 
+								encoding="utf-8" />	
+	</target>
+	<!-- NO.2 copy source to temp folder -->
+	<target name="copySourceToDeploy">
+		<copy todir="${DEPLOY_DIR_PATH}">
+			<fileset dir="${SRC_DIR_PATH}" />
+		</copy>
+	</target>
+	<!-- NO.1 get svn information -->
+	<target name="svn">
+		<exec dir="${PROJECT_HOME_PATH}" executable="svn" output="svninfo.xml">
+			<arg line="info --xml ./" />
+		</exec>
+		<xmltask source="svninfo.xml">
+			<copy path="/info/entry/@revision" property="svn.revision" />
+		</xmltask>
+	</target>
+</project>	
